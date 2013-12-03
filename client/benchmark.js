@@ -20,14 +20,17 @@ var snapshots = [];
 benchmark.start = function(svgToObserve) {
   svg = svgToObserve;
   snapshots = [];
+  startTime = (new Date()).getTime();
   benchmark.snapshot();
 };
 
 benchmark.snapshot = function() {
+  var startSnapshotTime = (new Date()).getTime();
   snapshots.push({
-    'time': (new Date()).getTime() - startTime,
+    'time': startSnapshotTime - startTime,
     'svg': svg.cloneNode(true);
   });
+  startTime += (new Date()).getTime() - startSnapshotTime;
 };
 
 benchmark.end = function() {
