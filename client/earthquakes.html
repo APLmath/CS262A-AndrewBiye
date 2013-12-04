@@ -21,6 +21,7 @@
     <button id="button_baseline">Baseline</button>
     <button id="button_simple">Simple sample</button>
     <button id="button_smart">Smart sample</button>
+    <input id="benchmark" type="checkbox" checked></input>Benchmark
   <p>Plot:
   <p><canvas id="plot" width="720" height="360"></canvas>
   <p>Quality curve:
@@ -28,10 +29,30 @@
 </body>
 <script>
 var canvasPlot = d3.select('#plot');
+var realBenchmark = benchmark;
+var fakeBenchmark = {
+  start: function() {},
+  snapshot: function() {},
+  end: function() { return [{
+    time: 0,
+    data: {
+      data: []
+    }
+  }]; }
+};
+benchmark = realBenchmark;
+d3.select('#benchmark').on('click', function(e) {
+  benchmark = this.checked ? realBenchmark : fakeBenchmark;
+});
+
+function clearCanvas() {
+  var canvas = canvasPlot.node();
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+}
 
 function plotPoints(earthquakes) {
   //console.log(earthquakes.length);
-  //benchmark.snapshot();
+  benchmark.snapshot();
   var context = canvasPlot.node().getContext('2d');
   for (var i = 0; i < earthquakes.length; i++) {
   	var d = earthquakes[i];
@@ -45,10 +66,11 @@ function plotPoints(earthquakes) {
     context.fillStyle = 'red';
     context.fill();
   }
-  //benchmark.snapshot();
+  benchmark.snapshot();
 }
 
 function baseline() {
+  clearCanvas();
   benchmark.start(canvasPlot.node());
 
   d3.csv('https://googledrive.com/host/0Bz7-IYxz1S8-anVXUFN3UXhna0k/earthquakes.csv', function(d) {
@@ -62,6 +84,7 @@ function baseline() {
 d3.select('#button_baseline').on('click', baseline);
 
 function simple() {
+  clearCanvas();
   benchmark.start(canvasPlot.node());
 
   var chunksCompleted = 0;
@@ -82,15 +105,23 @@ function simple() {
 d3.select('#button_simple').on('click', simple);
 
 function plotQuality(qualities) {
-  console.log(qualities);
-
-  var context = d3.select('#quality').node().getContext('2d');
+  if (benchmark == fakeBenchmark) {
+  	return;
+  }
+  var canvas = d3.select('#quality').node();
+  var context = canvas.getContext('2d');
+  context.globalAlpha = 0.4;
+  context.fillStyle = 'white';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.globalAlpha = 1;
   context.beginPath();
   context.moveTo(0, 200 - qualities[0].quality * 200);
   for (var i = 1; i < qualities.length; i++) {
   	var quality = qualities[i];
-    context.lineTo(quality.time / 4, 200 - quality.quality * 200);
+    context.lineTo(quality.time / 5, 200 - quality.quality * 200);
   }
+  context.strokeStyle = 'black';
+  context.lineWidth = 2;
   context.stroke();
 }
 </script>
