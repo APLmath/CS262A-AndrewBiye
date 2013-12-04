@@ -2,9 +2,9 @@
  * qualityeval.js provides functions to evaluate the fidelity of snapshots.
  *
  * Please include the following scripts for this to work:
- * <script type="text/javascript" src="http://canvg.googlecode.com/svn/trunk/rgbcolor.js"></script> 
+ * <script type="text/javascript" src="http://canvg.googlecode.com/svn/trunk/rgbcolor.js"></script>
  * <script type="text/javascript" src="http://canvg.googlecode.com/svn/trunk/StackBlur.js"></script>
- * <script type="text/javascript" src="http://canvg.googlecode.com/svn/trunk/canvg.js"></script> 
+ * <script type="text/javascript" src="http://canvg.googlecode.com/svn/trunk/canvg.js"></script>
  *
  * For each evaluation function:
  *
@@ -21,7 +21,7 @@
  * }*]
  */
 
-qualityeval = (function() {
+(function(exports) {
 var qualityeval = {};
 
 /**
@@ -57,5 +57,5 @@ qualityeval.absPixelDiff = function(snapshots) {
   return qualities;
 };
 
-return qualityeval;
-})();
+exports.qualityeval = qualityeval;
+})(this);

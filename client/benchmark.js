@@ -7,7 +7,7 @@
  * 3. Call benchmark.end when finished. This will return the list of snapshots.
  */
 
-benchmark = (function() {
+(function(exports) {
 // The benchmark object.
 var benchmark = {};
 // The SVG node to observe.
@@ -28,7 +28,7 @@ benchmark.snapshot = function() {
   var startSnapshotTime = (new Date()).getTime();
   snapshots.push({
     'time': startSnapshotTime - startTime,
-    'svg': svg.cloneNode(true);
+    'svg': svg.cloneNode(true)
   });
   startTime += (new Date()).getTime() - startSnapshotTime;
 };
@@ -38,5 +38,5 @@ benchmark.end = function() {
   return snapshots;
 };
 
-return benchmark;
-})();
+exports.benchmark = benchmark;
+})(this);
