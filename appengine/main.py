@@ -1,3 +1,4 @@
+import data
 import webapp2
 from google.appengine.ext.webapp import template
 
@@ -16,6 +17,8 @@ class UploadHandler(webapp2.RequestHandler):
     # If empty, redirect back to the home page.
     if not data_content:
       self.redirect(self.uri_for('home'))
+
+    filename = self.request.POST['csv'].filename
 
     # Otherwise, reflect it to the output.
     self.response.headers['Content-Type'] = 'text/plain'
