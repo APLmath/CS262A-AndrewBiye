@@ -30,11 +30,13 @@ def to_number(s):
     except:
       return s
 
+SAVE_CHUNK_SIZE = 1000
+
 def save_csv(filename, contents):
   f = cStringIO.StringIO(contents)
   reader = csv.DictReader(f)
   field_names = reader.fieldnames
-  all_rows = list(reader)[:1000]
+  all_rows = list(reader)
   f.close()
 
   # Determine which fields contain only numerical values
@@ -50,7 +52,9 @@ def save_csv(filename, contents):
                 number_fields=number_fields)
   table.put()
 
-  deferred.defer(deferred_save_rows, table, all_rows)
+  for i in range((len(all_rows) - 1) / SAVE_CHUNK_SIZE + 1):
+    deferred.defer(deferred_save_rows, table,
+        all_rows[i * SAVE_CHUNK_SIZE:(i + 1) * SAVE_CHUNK_SIZE])
 
   return table.key.integer_id()
 
