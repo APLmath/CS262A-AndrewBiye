@@ -10,3 +10,6 @@ handlers:
 
 - url: /.*
   script: main.application
+
+builtins:
+- deferred: on
