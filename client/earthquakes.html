@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+
+<head>
+<script type="text/javascript" src="lib/d3.v3.min.js"></script>
+<script type="text/javascript" src="qualityeval.js"></script>
+<script type="text/javascript" src="benchmark.js"></script>
+<style>
+#plot, #quality {
+  border: 1px solid black;
+}
+
+#quality line {
+  stroke: blue;
+  stroke-width: 2px;
+}
+</style>
+</head>
+
+<body>
+  <p>
+    <button id="button_baseline">Baseline</button>
+    <button id="button_simple">Simple sample</button>
+    <button id="button_smart">Smart sample</button>
+    <input id="benchmark" type="checkbox" checked></input>Benchmark
+  <p>Plot:
+  <p><canvas id="plot" width="720" height="360"></canvas>
+  <p>Quality curve:
+  <p><canvas id="quality" width="800" height="200"></canvas>
+</body>
+<script>
+var canvasPlot = d3.select('#plot');
+var realBenchmark = benchmark;
+var fakeBenchmark = {
+  start: function() {},
+  snapshot: function() {},
+  end: function() { return [{
+    time: 0,
+    data: {
+      data: []
+    }
+  }]; }
+};
+benchmark = realBenchmark;
+d3.select('#benchmark').on('click', function(e) {
+  benchmark = this.checked ? realBenchmark : fakeBenchmark;
+});
+
+function clearCanvas() {
+  var canvas = canvasPlot.node();
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function plotPoints(earthquakes) {
+  //console.log(earthquakes.length);
+  benchmark.snapshot();
+  var context = canvasPlot.node().getContext('2d');
+  for (var i = 0; i < earthquakes.length; i++) {
+  	var d = earthquakes[i];
+    context.beginPath();
+    context.arc(360 + (+d.long) * 2,
+                180 - (+d.lat) * 2,
+                2,
+                0,
+                2 * Math.PI);
+    context.globalAlpha = 0.4;
+    context.fillStyle = 'red';
+    context.fill();
+  }
+  benchmark.snapshot();
+}
+
+function baseline() {
+  clearCanvas();
+  benchmark.start(canvasPlot.node());
+
+  d3.csv('https://googledrive.com/host/0Bz7-IYxz1S8-anVXUFN3UXhna0k/earthquakes.csv', function(d) {
+    return d;
+  }, function(data) {
+    plotPoints(data);
+
+    plotQuality(qualityeval.absPixelDiff(benchmark.end()));
+  });
+}
+d3.select('#button_baseline').on('click', baseline);
+
+function simple() {
+  clearCanvas();
+  benchmark.start(canvasPlot.node());
+
+  var chunksCompleted = 0;
+  for (var i = 0; i < 100; i++) {
+    d3.csv('https://googledrive.com/host/0Bz7-IYxz1S8-anVXUFN3UXhna0k/earthquakes_' + i + '.csv', function(d) {
+      //console.log(d);
+      return d;
+    }, function(data) {
+      plotPoints(data);
+      chunksCompleted++;
+
+      if (chunksCompleted == 100) {
+        plotQuality(qualityeval.absPixelDiff(benchmark.end()));
+      }
+    });
+  }
+}
+d3.select('#button_simple').on('click', simple);
+
+function plotQuality(qualities) {
+  if (benchmark == fakeBenchmark) {
+  	return;
+  }
+  var canvas = d3.select('#quality').node();
+  var context = canvas.getContext('2d');
+  context.globalAlpha = 0.4;
+  context.fillStyle = 'white';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.globalAlpha = 1;
+  context.beginPath();
+  context.moveTo(0, 200 - qualities[0].quality * 200);
+  for (var i = 1; i < qualities.length; i++) {
+  	var quality = qualities[i];
+    context.lineTo(quality.time / 5, 200 - quality.quality * 200);
+  }
+  context.strokeStyle = 'black';
+  context.lineWidth = 2;
+  context.stroke();
+}
+</script>
