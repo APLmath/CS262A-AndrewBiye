@@ -2,21 +2,22 @@ import cStringIO
 import csv
 from google.appengine.ext import ndb
 
-
+# Here, field names are actually mapped to synthesized field names to prevent
+# collisions and such.
 
 class Table(ndb.Model):
   # The original filename of the table.
   filename = ndb.StringProperty(required=True)
-  # The list of the original names for all the columns in the table.
-  original_columns = ndb.StringProperty(repeated=True)
-  # The list of names for just the numerical columns.
-  number_columns = ndb.StringProperty(repeated=True)
+  # The list of the original names for all the fields in the table.
+  original_fields = ndb.StringProperty(repeated=True)
+  # The list of names for just the numerical fields.
+  number_fields = ndb.StringProperty(repeated=True)
 
-# Row will reproduce the values in the rows, albeit with synthesized field names.
-class Row(ndb.Expando):
+# Item will reproduce the values in the rows.
+class Item(ndb.Expando):
   pass
 
-
+# Convert a string to a number, if possible.
 def to_number(s):
   try:
     return int(s)
@@ -29,8 +30,48 @@ def to_number(s):
 def save_csv(filename, contents):
   f = cStringIO.StringIO(contents)
   reader = csv.DictReader(f)
-
-  
-  table = Table(filename=filename, original_columns=reader.fieldnames)
-
+  field_names = reader.fieldnames
+  all_rows = list(reader)[:1000]
   f.close()
+
+  # Determine which fields contain only numerical values
+  number_fields = field_names[:]
+  for row in all_rows:
+    for field in number_fields[:]:
+      value = row[field]
+      if value and type(to_number(value)) is not float:
+        number_fields.remove(field)
+
+  table = Table(filename=filename,
+                original_fields=field_names,
+                number_fields=number_fields)
+  table.put()
+
+  items = []
+  for row in all_rows:
+    item = Item(parent=table.key)
+    item._properties = {
+      'field' + str(i):
+        ndb.GenericProperty('field' + str(i), indexed=True)
+        if field in number_fields else
+        ndb.TextProperty('field' + str(i))
+      for i, field in enumerate(field_names) if row[field]
+    }
+    item._values = {
+      'field' + str(i):
+        to_number(row[field]) if field in number_fields else row[field]
+      for i, field in enumerate(field_names) if row[field]
+    }
+    items.append(item)
+  ndb.put_multi(items)
+
+  return table.key.integer_id()
+
+def get_csv(data_id):
+  table_key = ndb.Key(Table, data_id)
+  item_query = Item.query(ancestor=table_key)
+
+  ret = table_key.get().filename
+  for item in item_query:
+    ret += '\n' + str(getattr(item, 'field0'))
+  return ret

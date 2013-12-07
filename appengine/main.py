@@ -20,15 +20,15 @@ class UploadHandler(webapp2.RequestHandler):
 
     filename = self.request.POST['csv'].filename
 
-    # Otherwise, reflect it to the output.
-    self.response.headers['Content-Type'] = 'text/plain'
-    self.response.write(data_content)
+    data_id = data.save_csv(filename, data_content)
+    self.redirect(self.uri_for('view', data_id=data_id))
 
 # Handler to display the data for the given data ID in a nice way.
 class ViewHandler(webapp2.RequestHandler):
   def get(self, data_id):
+    data_id = int(data_id)
     self.response.headers['Content-Type'] = 'text/plain'
-    self.response.write('Hello, World! ' + str(data_id))
+    self.response.write(data.get_csv(data_id))
 
 # Handler that returns the data in the desired chunks.
 class DataHandler(webapp2.RequestHandler):
