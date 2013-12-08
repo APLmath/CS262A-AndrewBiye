@@ -56,7 +56,8 @@
 		 //loadData(["data/dat.txt"],[parse],viz.init)
 		 //loadCSV("data/earthquakes.csv",viz.init)
 		 //viz.init([{flag:false,file:"data/earth",num:8,parse:loadCSV}])
-		 viz.init([{flag:false,file:"data/new/data",num:5,parse:loadText,lat:[23,48],lng:[-126,-65]}])
+		 //viz.init([{flag:false,file:"data/new/data",num:5,parse:loadText,lat:[23,48],lng:[-126,-65]}])
+		 for (var i = 0; i < 8; i++) { vis().init([{flag:false,file:"data/earth",num:(i+1),parse:loadCSV}]); }
 		 
 	 }
 	 
