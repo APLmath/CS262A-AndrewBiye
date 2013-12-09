@@ -10,6 +10,7 @@ def data(table_id, index1, index2, chunk):
   try:
     data = process.get_chunk(table_id, index1, index2, chunk)
     bottle.response.content_type = 'text/csv'
+    bottle.response.headers['Access-Control-Allow-Origin'] = '*'
     return data
   except Exception:
     raise bottle.HTTPError(404)
