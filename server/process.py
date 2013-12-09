@@ -1,3 +1,4 @@
+import cStringIO
 import csv
 import shortuuid
 import sqlalchemy
@@ -67,3 +68,30 @@ def save_csv(file_upload):
       synth_names[column_name]: value for column_name, value in row.iteritems()
     } for row in all_rows])
   return table_id
+
+def get_chunk(table_id, index1, index2, chunk):
+  columns_select = sqlalchemy.select([
+    __UPLOADED_TABLE_COLUMNS.c.original_name,
+    __UPLOADED_TABLE_COLUMNS.c.synth_name
+  ]).where(__UPLOADED_TABLE_COLUMNS.c.table_id == table_id)
+  data_table = sqlalchemy.Table('table_' + table_id, __METADATA,
+    autoload=True, autoload_with=__ENGINE)
+  original_names = {}
+  synth_names = {}
+
+  with __ENGINE.begin() as conn:
+    for original_name, synth_name in conn.execute(columns_select):
+      original_names[synth_name] = original_name
+      synth_names[original_name] = synth_name
+    csv_file = cStringIO.StringIO()
+    writer = csv.DictWriter(csv_file, original_names.values())
+    writer.writeheader()
+    data_select = sqlalchemy.select(list(data_table.c))
+    for row in conn.execute(data_select):
+      writer.writerow({
+        original_names[synth_name]: value for synth_name, value in row.items()
+            if synth_name[:6] == 'column'
+      })
+
+  csv_file.seek(0)
+  return csv_file

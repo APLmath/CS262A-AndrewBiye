@@ -5,9 +5,10 @@ import process
 def view(table_id):
   return 'View ' + str(table_id)
 
-@bottle.route('/<table_id:re:[a-zA-Z0-9]{22}>/data')
-def data(table_id):
-  return 'Data ' + str(table_id)
+@bottle.route('/<table_id:re:[a-zA-Z0-9]{22}>/<index1>/<index2>/<chunk:int>')
+def data(table_id, index1, index2, chunk):
+  bottle.response.content_type = 'text/csv'
+  return process.get_chunk(table_id, index1, index2, chunk)
 
 @bottle.route('/static/<filename>')
 def static(filename):
