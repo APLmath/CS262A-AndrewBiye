@@ -169,8 +169,8 @@ def __process_csv(table_id, all_rows):
 def __reorder(args):
   orderings, index_pair, data = args
   orderings[index_pair] = reorder.reorder(data)
-  print index_pair, 'done!'
 
+# Get the chunk of data where the chunk was indexed by index1 and index2.
 def get_chunk(table_id, index1, index2, chunk):
   columns_select = sqlalchemy.select([
     __UPLOADED_TABLE_COLUMNS.c.original_name,
@@ -185,11 +185,16 @@ def get_chunk(table_id, index1, index2, chunk):
     for original_name, synth_name in conn.execute(columns_select):
       original_names[synth_name] = original_name
       synth_names[original_name] = synth_name
+    if index1 not in synth_names or index2 not in synth_names:
+      raise BadIndexException()
+    i, j = int(synth_names[index1][6:]), int(synth_names[index2][6:])
+    chunk_column = 'chunk_' + str(min(i, j)) + '_' + str(max(i, j))
     csv_file = cStringIO.StringIO()
     writer = csv.DictWriter(csv_file, original_names.values())
     writer.writeheader()
     data_select = sqlalchemy.select(
-        filter(lambda c: c[:6] == 'column', data_table.c))
+        filter(lambda c: c.name[:6] == 'column', data_table.c)).\
+        where(data_table.c[chunk_column] == chunk)
     for row in conn.execute(data_select):
       writer.writerow({
         original_names[synth_name]: value for synth_name, value in row.items()
