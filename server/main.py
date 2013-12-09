@@ -1,13 +1,13 @@
 import bottle
 import process
 
-@bottle.route('/<data_id:re:[a-zA-Z0-9]{22}>')
-def view(data_id):
-  return 'View ' + str(data_id)
+@bottle.route('/<table_id:re:[a-zA-Z0-9]{22}>')
+def view(table_id):
+  return 'View ' + str(table_id)
 
-@bottle.route('/<data_id:re:[a-zA-Z0-9]{22}>/data')
-def data(data_id):
-  return 'Data ' + str(data_id)
+@bottle.route('/<table_id:re:[a-zA-Z0-9]{22}>/data')
+def data(table_id):
+  return 'Data ' + str(table_id)
 
 @bottle.route('/static/<filename>')
 def static(filename):
@@ -17,7 +17,7 @@ def static(filename):
 def upload():
   file_upload = bottle.request.files.get('csv')
   if file_upload:
-    return file_upload.file.read()
+    return process.save_csv(file_upload)
   else:
   	bottle.redirect('/')
 
