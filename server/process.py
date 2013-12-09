@@ -15,7 +15,8 @@ __UPLOADED_TABLES = sqlalchemy.Table('uploaded_tables', __METADATA,
 __UPLOADED_TABLES.create(__ENGINE, checkfirst=True)
 __UPLOADED_TABLE_COLUMNS = sqlalchemy.Table('uploaded_table_columns', __METADATA,
   sqlalchemy.Column('id', sqlalchemy.types.Integer, primary_key=True),
-  sqlalchemy.Column('table_id', sqlalchemy.types.String(22), sqlalchemy.ForeignKey('uploadedTables.table_id')),
+  sqlalchemy.Column('table_id', sqlalchemy.types.String(22),
+      sqlalchemy.ForeignKey('uploaded_tables.table_id')),
   sqlalchemy.Column('original_name', sqlalchemy.types.String(256)),
   sqlalchemy.Column('synth_name', sqlalchemy.types.String(10)))
 __UPLOADED_TABLE_COLUMNS.create(__ENGINE, checkfirst=True)
@@ -54,7 +55,7 @@ def save_csv(file_upload):
     conn.execute(__UPLOADED_TABLES.insert(), {
       'table_id': table_id,
       'filename': filename,
-      'num_chunks': (len(all_rows) - 1) / __CHUNK_SIZE + 1
+      'num_chunks': (len(all_rows) - 1) / __CHUNK_SIZE + 1,
       'complete': False
     })
   
@@ -72,6 +73,7 @@ def __process_csv(table_id, all_rows):
 
   # Track which columns are purely numbers.
   number_type = {column: int for column in column_names}
+  empty_columns = column_names[:]
   for row in all_rows:
     for number_column in number_type.keys():
       value = row[number_column]
@@ -82,6 +84,11 @@ def __process_csv(table_id, all_rows):
         del number_type[number_column]
       elif type(value) is float:
         number_type[number_column] = float
+    for column in empty_columns[:]:
+      if row[column]:
+        empty_columns.remove(column)
+  for empty_column in empty_columns:
+    del number_type[empty_column]
 
   # Find all the pairs of columns that may be used for indexing.
   number_columns = [i for i, column_name in enumerate(column_names)
@@ -95,28 +102,32 @@ def __process_csv(table_id, all_rows):
   # typed accordingly.
   all_rows = [{
     synth_names[original_name]: (number_type[original_name](value)
-        if original_name in number_type else value)
-        for original_name, value in row.items() if value
+        if original_name in number_type else value) if value else None
+        for original_name, value in row.items()
   } for row in all_rows]
 
   # Kick off workers that each compute for a pair of indexing columns.
   pool = multiprocessing.Pool()
-  # Queue to collect results.
-  queue = multiprocessing.Queue()
+  # Dictionary to collect results.
+  orderings = multiprocessing.Manager().dict()
   # Helper function to generate the arguments.
   def generate_reordering_args(index_pair):
     i, j = index_pair
-    return (queue, index_pair,
-        [(index, row['column' + str(i)], row['column' + str(j)])
-            for index, row in enumerate(all_rows)])
+    i = 'column' + str(i)
+    j = 'column' + str(j)
+    return (orderings, index_pair,
+        [(index, row[i], row[j]) for index, row in enumerate(all_rows)
+            if row[i] and row[j]])
   # Run the workers, and block until they finish.
   pool.map(__reorder, map(generate_reordering_args, index_pairs))
 
   # Add all the results to the rows.
-  while not queue.empty():
-    (i, j), ordering = queue.get()
+  for (i, j), ordering in orderings.items():
+    column_name = 'chunk_' + str(i) + '_' + str(j)
+    for row in all_rows:
+      row[column_name] = None
     for k, index in enumerate(ordering):
-      all_rows[index]['chunk_' + str(i) + '_' + str(j)] = k / __CHUNK_SIZE;
+      all_rows[index][column_name] = k / __CHUNK_SIZE;
 
   # Set up a new table for the data.
   args = [
@@ -124,8 +135,8 @@ def __process_csv(table_id, all_rows):
     sqlalchemy.Column('id', sqlalchemy.types.Integer, primary_key=True)
   ]
   column_types = {
-    float: sqlalchemy.types.Float
-    int: sqlalchemy.types.Integer
+    float: sqlalchemy.types.Float,
+    int: sqlalchemy.types.BigInteger,
     str: sqlalchemy.types.Text
   }
   for column_name in column_names:
@@ -151,13 +162,14 @@ def __process_csv(table_id, all_rows):
     # Update the "completed" flag.
     conn.execute(__UPLOADED_TABLES.update().\
         where(__UPLOADED_TABLES.c.table_id == table_id).\
-        values(completed=True))
+        values(complete=True))
 
 # Effectively, this is not much more than a wrapper around the reordering
 # function, for use by multiprocessing.
 def __reorder(args):
-  queue, index_pair, data = args
-  queue.put((index_pair, reorder.reorder(data)))
+  orderings, index_pair, data = args
+  orderings[index_pair] = reorder.reorder(data)
+  print index_pair, 'done!'
 
 def get_chunk(table_id, index1, index2, chunk):
   columns_select = sqlalchemy.select([

@@ -1,6 +1,6 @@
 def reorder(data, max_points=4):
   def reorder_helper(data, minX, maxX, minY, maxY):
-    if len(data) <= max_points:
+    if len(data) <= max_points or len(set([(x, y) for id, x, y in data])) == 1:
       return [id for id, x, y in data]
     midX = (minX + maxX) / 2
     midY = (minY + maxY) / 2
@@ -24,10 +24,8 @@ def reorder(data, max_points=4):
         reorderings.pop(i)
     return final_reordering
 
-  minX = data[0][1]
-  maxX = minX
-  minY = data[0][2]
-  maxY = minY
+  id, minX, minY = data[0]
+  maxX, maxY = minX, minY
   for id, x, y in data[1:]:
     minX = min(x, minX)
     maxX = max(x, maxX)
