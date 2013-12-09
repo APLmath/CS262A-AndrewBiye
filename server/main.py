@@ -7,8 +7,12 @@ def view(table_id):
 
 @bottle.route('/<table_id:re:[a-zA-Z0-9]{22}>/<index1>/<index2>/<chunk:int>')
 def data(table_id, index1, index2, chunk):
-  bottle.response.content_type = 'text/csv'
-  return process.get_chunk(table_id, index1, index2, chunk)
+  try:
+    data = process.get_chunk(table_id, index1, index2, chunk)
+    bottle.response.content_type = 'text/csv'
+    return data
+  except Exception:
+    raise bottle.HTTPError(404)
 
 @bottle.route('/static/<filename>')
 def static(filename):
